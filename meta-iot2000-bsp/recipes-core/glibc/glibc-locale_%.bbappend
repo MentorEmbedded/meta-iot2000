@@ -1,0 +1,3 @@
+
+DEPENDS += "cross-localedef-native"
+
