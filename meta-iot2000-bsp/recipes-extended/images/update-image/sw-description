@@ -1,0 +1,19 @@
+{
+    "software": {
+        "iot2000":  {
+            "images": [
+                {
+                    "filename": "console-image-iot2000.ext4.gz",
+                    "type": "raw",
+                    "device": "/dev/mmcblk0p2",
+                    "compressed": "true",
+                    "installed- directly": "true"
+                }
+            ],
+            "hardware-compatibility": [
+                "1.0"
+            ]
+        }
+    },
+    "version": "0.1.0"
+}
