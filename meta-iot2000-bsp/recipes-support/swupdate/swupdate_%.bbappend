@@ -3,6 +3,7 @@ FILESEXTRAPATHS_prepend := "${THISDIR}/${PN}:"
 PACKAGECONFIG_CONFARGS = ""
 
 SRC_URI += " \
+     file://hwrevision \
      file://swupdate.cfg \
      "
 
@@ -12,5 +13,6 @@ do_install_append() {
     install -d ${D}${bindir}
     install -m 755 ${S}/progress ${D}${bindir}
     install -d ${D}${sysconfdir}
+    install -m 644 ${WORKDIR}/hwrevision ${D}${sysconfdir}
     install -m 644 ${WORKDIR}/swupdate.cfg ${D}${sysconfdir}
 }
