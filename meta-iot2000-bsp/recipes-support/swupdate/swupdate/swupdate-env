@@ -1,0 +1,12 @@
+#!/bin/sh
+
+# Give system time to setup networking
+sleep 10
+
+# Extract the MAC address of the on-board Ethernet controller
+MACHINE_ID=`ip address|grep link/ether|awk '{ print $2; }'`
+
+cat >/tmp/swupdate.env <<EOF
+MACHINE_ID=${MACHINE_ID}
+EOF
+
