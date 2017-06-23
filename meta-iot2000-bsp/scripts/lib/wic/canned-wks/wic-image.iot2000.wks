@@ -4,9 +4,8 @@
 
 part /boot --source bootimg-efi --sourceparams="loader=gummiboot" --ondisk mmcblk0 --label msdos --active --align 1024
 
-part / --source rootfs --ondisk mmcblk0 --fstype=ext3 --label pf_active --align 1024 --size 512M --extra-space 0
-part / --source rootfs --ondisk mmcblk0 --fstype=ext3 --label pf_backup --align 1024 --size 512M --extra-space 0
-part / --source rootfs --ondisk mmcblk0 --fstype=ext3 --label pf_factory --align 1024 --size 512M --extra-space 0
+part / --source rootfs --ondisk mmcblk0 --fstype=ext3 --label pf_active --align 1024 --size 1024M --extra-space 0
+part / --source rootfs --ondisk mmcblk0 --fstype=ext3 --label pf_backup --align 1024 --size 1024M --extra-space 0
 part --ondisk mmcblk0 --fstype=ext3 --label pf_data --align 1024 --size 512M
 
 bootloader  --timeout=0  --append="console=ttyS1,115200n8 reboot=efi,warm rw debugshell=5 rootwait initrd=EFI/BOOT/acpi-upgrades-iot2000.cpio"

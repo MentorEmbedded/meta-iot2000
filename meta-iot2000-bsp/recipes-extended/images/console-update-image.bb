@@ -7,6 +7,8 @@ LIC_FILES_CHKSUM = "file://${COREBASE}/LICENSE;md5=4d92cd373abda3937c2bc47fbc49d
 
 DEPENDS += "console-image"
 
+FILESEXTRAPATHS_prepend := "${THISDIR}/common:"
+
 SRC_URI = " \
             file://pivot.sh \
             file://sw-description \
