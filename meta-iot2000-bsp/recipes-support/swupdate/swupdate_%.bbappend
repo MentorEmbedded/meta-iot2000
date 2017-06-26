@@ -10,7 +10,7 @@ SRC_URI += " \
      file://swupdate-env \
      "
 
-SRCREV = "${AUTOREV}"
+SRCREV = "5810b5ec5d4fab56503dc99abd264d1ba196ce11"
 
 do_install_append() {
     install -d ${D}${bindir}
