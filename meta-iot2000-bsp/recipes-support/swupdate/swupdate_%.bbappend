@@ -4,6 +4,7 @@ PACKAGECONFIG_CONFARGS = ""
 
 SRC_URI += " \
      file://0001-Provide-a-dummy-file-backed-bootloader-interface.patch \
+     file://rawfile-check-if-files-are-the-same.patch \
      file://hwrevision \
      file://swupdate.cfg \
      file://swupdate-env \

@@ -1,48 +1,70 @@
-From 01fd4ee1dddb0f5891e211efd132a4815c29fae1 Mon Sep 17 00:00:00 2001
+From 74cb011d80bd5ba7d70ebaf3605615ed8bcec0b5 Mon Sep 17 00:00:00 2001
 From: Cedric Hombourger <Cedric_Hombourger@mentor.com>
-Date: Tue, 20 Jun 2017 22:09:07 +0200
-Subject: [PATCH] Provide a (dummy) file-backed bootloader interface
+Date: Thu, 22 Jun 2017 09:59:22 +0200
+Subject: [PATCH v3] Add a file-backed bootloader interface for test purposes
+
+When your bootloader is not supported by swupdate, it may be convenient
+to have a persistent settings store put on a separate partition (not
+affected by firmware updates). This is really meant to be an intermediate
+solution as the hosting partition may get corrupted if the device isn't
+cleanly shut down.
 
 Signed-off-by: Cedric Hombourger <Cedric_Hombourger@mentor.com>
 ---
- bootloader/Config.in         |  13 ++++++
- bootloader/Makefile          |   1 +
- bootloader/file.c            | 102 +++++++++++++++++++++++++++++++++++++++++++
- 3 files changed, 116 insertions(+)
- create mode 100644 bootloader/file.c
+ bootloader/Config.in |  19 ++++++
+ bootloader/Makefile  |   1 +
+ bootloader/test.c    | 175 +++++++++++++++++++++++++++++++++++++++++++++++++++
+ 3 files changed, 195 insertions(+)
+ create mode 100644 bootloader/test.c
 
-Index: git/bootloader/Config.in
-===================================================================
---- git.orig/bootloader/Config.in
-+++ git/bootloader/Config.in
-@@ -19,6 +19,19 @@ config BOOTLOADER_NONE
+diff --git a/bootloader/Config.in b/bootloader/Config.in
+index 1fb0f68..9fe0fbd 100644
+--- a/bootloader/Config.in
++++ b/bootloader/Config.in
+@@ -19,6 +19,25 @@ config BOOTLOADER_NONE
  	help
  	  No interface to the bootloader
  
-+config BOOTLOADER_FILE
-+	bool "File"
++config BOOTLOADER_TEST
++	bool "Test"
++	depends on HAVE_LIBCONFIG
 +	help
-+	  A file-backed boot settings interface
++	  A file-backed boot settings interface that may be used
++	  for testing purposes when your actual boot-loader is not
++	  supported by swupdate
 +
-+config BOOTLOADER_FILE_PATH
++config BOOTLOADER_TEST_FILENAME
 +	string "Location of the boot settings file"
-+        depends on BOOTLOADER_FILE
++        depends on BOOTLOADER_TEST
 +	default "/etc/swu-boot.conf"
 +	help
-+          This is the file where boot settings will be
-+          read from / written to
++	  This is the file where boot settings will be read from
++	  or written to (it should be placed on a separate partition
++	  so it does not get lost when software updates are applied;
++	  as such the default value of /etc/swu-boot.conf should be
++	  changed)
 +
  config BOOTLOADER_GRUB
  	bool "GRUB Bootloader"
  	help
-Index: git/bootloader/file.c
-===================================================================
+diff --git a/bootloader/Makefile b/bootloader/Makefile
+index a652058..0a1979a 100644
+--- a/bootloader/Makefile
++++ b/bootloader/Makefile
+@@ -1,3 +1,4 @@
+ lib-$(CONFIG_UBOOT)		+= uboot.o
+ lib-$(CONFIG_BOOTLOADER_NONE)	+= none.o
+ lib-$(CONFIG_BOOTLOADER_GRUB)	+= grub.o
++lib-$(CONFIG_BOOTLOADER_TEST)	+= test.o
+diff --git a/bootloader/test.c b/bootloader/test.c
+new file mode 100644
+index 0000000..5f4736c
 --- /dev/null
-+++ git/bootloader/file.c
-@@ -0,0 +1,105 @@
++++ b/bootloader/test.c
+@@ -0,0 +1,175 @@
 +/*
 + * (C) Copyright 2017
-+ * Stefano Babic, DENX Software Engineering, sbabic@denx.de.
++ * Cedric Hombourger, Mentor Graphics, Cedric_Hombourger@mentor.com
 + *
 + * This program is free software; you can redistribute it and/or
 + * modify it under the terms of the GNU General Public License as
@@ -61,69 +83,79 @@ Index: git/bootloader/file.c
 + */
 +
 +#include <errno.h>
++#include <stdlib.h>
 +#include <unistd.h>
 +#include <libconfig.h>
 +
 +#include "bootloader.h"
 +#include "util.h"
 +
-+int bootloader_env_set(const char *name, const char *value)
++static int set(config_t *cfg, const char *name, const char *value)
 +{
-+	config_t cfg;
-+	config_setting_t *root, *node;
-+	int result = CONFIG_FALSE;
-+
-+	config_init(&cfg);
-+	(void) config_read_file(&cfg, CONFIG_BOOTLOADER_FILE_PATH);
-+	node = config_lookup(&cfg, name);
++	config_setting_t *root, *setting;
++	int ret = CONFIG_FALSE;
 +
 +	/* Check if setting already exists */
-+	if (node) {
-+		result = config_setting_set_string(node, value);
++	setting = config_lookup(cfg, name);
++	if (setting) {
++		ret = config_setting_set_string(setting, value);
 +	}
 +	else {
 +		/* Otherwise add... */
-+		root = config_root_setting(&cfg);
-+		node = config_setting_add(root, name, CONFIG_TYPE_STRING);
-+		if (node) {
-+			result = config_setting_set_string(node, value);
++		root = config_root_setting(cfg);
++		setting = config_setting_add(root, name, CONFIG_TYPE_STRING);
++		if (setting) {
++			ret = config_setting_set_string(setting, value);
 +		}
-+		else result = CONFIG_FALSE;
++		else ret = CONFIG_FALSE;
 +	}
++	return ret;
++}
++
++int bootloader_env_set(const char *name, const char *value)
++{
++	config_t cfg;
++	int ret = CONFIG_FALSE;
++
++	config_init(&cfg);
++	(void) config_read_file(&cfg, CONFIG_BOOTLOADER_TEST_FILENAME);
++
++	/* Add/update name/value pair */
++	ret = set(&cfg, name, value);
 +
 +	/* Write configuration */
-+	if (result == CONFIG_TRUE) {
-+		result = config_write_file(&cfg, CONFIG_BOOTLOADER_FILE_PATH);
++	if (ret == CONFIG_TRUE) {
++		ret = config_write_file(&cfg, CONFIG_BOOTLOADER_TEST_FILENAME);
 +	}
 +
 +	config_destroy(&cfg);
-+	result = (result == CONFIG_TRUE) ? 0 : -1;
-+	return result;
++	ret = (ret == CONFIG_TRUE) ? 0 : -1;
++	return ret;
 +}
 +
 +int bootloader_env_unset(const char *name)
 +{
 +	config_t cfg;
 +	config_setting_t *root;
-+	int result = CONFIG_FALSE;
++	int ret = CONFIG_FALSE;
 +
 +	config_init(&cfg);
-+	(void) config_read_file(&cfg, CONFIG_BOOTLOADER_FILE_PATH);
++	(void) config_read_file(&cfg, CONFIG_BOOTLOADER_TEST_FILENAME);
 +
 +	/* Try to remove the requested setting */
 +	root = config_root_setting(&cfg);
-+	result = config_setting_remove(root, name);
++	ret = config_setting_remove(root, name);
 +
 +	/* Write configuration */
-+	if (result == CONFIG_TRUE) {
-+		result = config_write_file(&cfg, CONFIG_BOOTLOADER_FILE_PATH);
++	if (ret == CONFIG_TRUE) {
++		ret = config_write_file(&cfg, CONFIG_BOOTLOADER_TEST_FILENAME);
 +	}
-+	else result = CONFIG_TRUE;
++	else ret = CONFIG_TRUE;
 +
 +	config_destroy(&cfg);
 +
-+	result = (result == CONFIG_TRUE) ? 0 : -1;
-+	return result;
++	ret = (ret == CONFIG_TRUE) ? 0 : -1;
++	return ret;
 +}
 +
 +char *bootloader_env_get(const char *name)
@@ -132,7 +164,7 @@ Index: git/bootloader/file.c
 +	const char *value = NULL;
 +
 +	config_init(&cfg);
-+	if (config_read_file(&cfg, CONFIG_BOOTLOADER_FILE_PATH) == CONFIG_TRUE) {
++	if (config_read_file(&cfg, CONFIG_BOOTLOADER_TEST_FILENAME) == CONFIG_TRUE) {
 +		if (config_lookup_string(&cfg, name, &value) == CONFIG_TRUE) {
 +			value = strdup(value);
 +		}
@@ -141,16 +173,70 @@ Index: git/bootloader/file.c
 +	return (char *)value;
 +}
 +
-+int bootloader_apply_list(const char __attribute__ ((__unused__)) *filename)
++static int parse_generated_script(config_t *cfg, const char *script)
 +{
-+	return 0;
++	FILE *fp = NULL;
++	int ret = CONFIG_FALSE;
++	char *line = NULL, *key = NULL, *value = NULL;
++	size_t len = 0;
++
++	/* Open script generated during sw-description parsing */
++	fp = fopen(script, "rb");
++	if (!fp) {
++		ERROR("Failed to open generated script file: %s\n", script);
++		goto cleanup;
++	}
++
++	/* Load name-value pairs from script into our config object */
++	/* Note that variables with no value assigned are skipped now.
++	 * We should consider whether we want to replicate U-Boot behavior
++	 * (unset if no value given). libconfig distinguishes unsetting
++	 * (removing) variable from environment and setting variable to an
++	 * empty string (NULL) as two actions. We should think about it if
++	 * it turns out to be desired
++	 */
++	while ((getline(&line, &len, fp)) != -1) {
++		key = strtok(line, " \t\n");
++		value = strtok(NULL, " \t\n");
++		if (value != NULL && key != NULL) {
++			ret = set(cfg, key, value);
++			if (ret != CONFIG_TRUE) {
++				ERROR("Adding pair [%s] = %s into dictionary"
++					"list failed\n", key, value);
++				goto cleanup;
++			}
++		}
++	}
++
++cleanup:
++	if (fp) fclose(fp);
++	free(line);
++
++	ret = (ret == CONFIG_TRUE) ? 0 : -1;
++	return ret;
 +}
-Index: git/bootloader/Makefile
-===================================================================
---- git.orig/bootloader/Makefile
-+++ git/bootloader/Makefile
-@@ -1,3 +1,4 @@
- lib-$(CONFIG_UBOOT)		+= uboot.o
- lib-$(CONFIG_BOOTLOADER_NONE)	+= none.o
- lib-$(CONFIG_BOOTLOADER_GRUB)	+= grub.o
-+lib-$(CONFIG_BOOTLOADER_FILE)	+= file.o
++
++int bootloader_apply_list(const char *filename)
++{
++	config_t cfg;
++	int ret;
++
++	config_init(&cfg);
++
++	/* Read current settings file */
++	(void) config_read_file(&cfg, CONFIG_BOOTLOADER_TEST_FILENAME);
++
++	/* Amend settings with provided script */
++	ret = parse_generated_script(&cfg, filename);
++
++	/* Write changes back to disk */
++        if (ret == CONFIG_TRUE) {
++		ret = config_write_file(&cfg, CONFIG_BOOTLOADER_TEST_FILENAME);
++        }
++
++	ret = (ret == CONFIG_TRUE) ? 0 : -1;
++	return ret;
++}
+-- 
+2.7.4
+
