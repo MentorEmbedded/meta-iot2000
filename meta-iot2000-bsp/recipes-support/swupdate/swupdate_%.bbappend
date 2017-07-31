@@ -10,11 +10,10 @@ SRC_URI += " \
      file://swupdate-env \
      "
 
-SRCREV = "5810b5ec5d4fab56503dc99abd264d1ba196ce11"
+SRCREV = "37a0328d8a8446d5a3d26b80034660390dcc871a"
 
 do_install_append() {
     install -d ${D}${bindir}
-    install -m 755 ${S}/progress ${D}${bindir}
     install -m 755 ${WORKDIR}/swupdate-env ${D}${bindir}
     install -d ${D}${sysconfdir}
     install -m 644 ${WORKDIR}/hwrevision ${D}${sysconfdir}
