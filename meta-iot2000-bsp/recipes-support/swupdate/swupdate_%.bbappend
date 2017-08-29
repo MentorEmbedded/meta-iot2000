@@ -19,3 +19,9 @@ do_install_append() {
     install -m 644 ${WORKDIR}/hwrevision ${D}${sysconfdir}
     install -m 644 ${WORKDIR}/swupdate.cfg ${D}${sysconfdir}
 }
+
+do_compile() {
+  unset CFLAGS CPPFLAGS CXXFLAGS LDFLAGS
+  oe_runmake swupdate_unstripped
+  cp swupdate_unstripped swupdate
+}
