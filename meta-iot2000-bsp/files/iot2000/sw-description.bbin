@@ -1,0 +1,25 @@
+{
+    "software": {
+        "iot2000":  {
+            "scripts": [
+                {
+                    "filename": "pivot.sh",
+                    "sha256": "@pivot.sh",
+                    "type": "shellscript",
+                }
+            ],
+            "images": [
+                {
+                    "filename": "${image}",
+                    "sha256": "@${image}",
+                    "type": "raw",
+                    "device": "/dev/disk/by-label/pf_backup",
+                }
+            ],
+            "hardware-compatibility": [
+                "1.0"
+            ]
+        }
+    },
+    "version": "0.1.0"
+}
