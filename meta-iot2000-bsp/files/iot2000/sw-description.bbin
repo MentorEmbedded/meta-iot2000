@@ -6,7 +6,8 @@
                     "filename": "${image}",
                     "sha256": "@${image}",
                     "type": "raw",
-                    "device": "/dev/mmcblk0p2"
+                    "device": "/dev/mmcblk0p2",
+                    "installed-directly": "true"
                 }
             ],
             "hardware-compatibility": [
