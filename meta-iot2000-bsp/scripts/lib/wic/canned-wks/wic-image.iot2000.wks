@@ -1,11 +1,21 @@
-# short-description: Create an IOT2000 disk image
+# short-description: Create an IOT2000 disk image with efibootguard
 # long-description: Creates a partitioned EFI disk image for the SIMATIC IOT2000
-# that the user can directly dd to boot media.
+# using efibootguard, that the user can directly dd to boot media.
 
-part /boot --source bootimg-efi --sourceparams="loader=gummiboot" --ondisk mmcblk0 --label msdos --active --align 1024
+# EFI partition containing efibootguard
+part --source efibootguard-efi --size 32 --extra-space 0 --overhead-factor 1 --ondisk mmcblk0 --label efi --part-type=EF00 --align 1024
 
-part / --source rootfs --ondisk mmcblk0 --fstype=ext3 --label pf_active --align 1024 --size 1024M --extra-space 0
-part / --source rootfs --ondisk mmcblk0 --fstype=ext3 --label pf_backup --align 1024 --size 1024M --extra-space 0
-part --ondisk mmcblk0 --fstype=ext3 --label pf_data --align 1024 --size 512M
+# Two root partitions for updateability, leave away 2nd if not used
+part / --source rootfs --size 1024 --extra-space 0 --overhead-factor 1 --ondisk mmcblk0 --fstype=ext4 --label platform0 --align 1024
+part --source rootfs --size 1024 --extra-space 0 --overhead-factor 1 --ondisk mmcblk0 --fstype=ext4 --label plaftorm1 --align 1024
 
-bootloader  --timeout=0  --append="console=ttyS1,115200n8 reboot=efi,warm rw debugshell=5 rootwait initrd=EFI/BOOT/acpi-upgrades-iot2000.cpio"
+# Two config partitions to load boot configuration and kernel
+part --source efibootguard-boot --size 32 --extra-space 0 --overhead-factor 1 --ondisk mmcblk0 --label boot0 --align 1024 --part-type=0700 --sourceparams "watchdog=60,revision=2"
+part --source efibootguard-boot --size 32 --extra-space 0 --overhead-factor 1 --ondisk mmcblk0 --label boot1 --align 1024 --part-type=0700 --sourceparams "watchdog=60,revision=1"
+
+# Other partitions
+part --size 1024 --extra-space 0 --overhead-factor 1 --ondisk mmcblk0 --label persistent --align 1024 --fstype=ext4
+part swap --ondisk mmcblk0 --size 512 --fstype=swap --label swap --align 1024
+
+# Important for type of partition table
+bootloader --ptable gpt --append="console=ttyS1,115200n8 reboot=efi,warm rw debugshell=5 rootwait initrd=acpi-upgrades-iot2000.cpio"
