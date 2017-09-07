@@ -1,0 +1,401 @@
+Add support for EFI Boot Guard to SWUpdate.
+See: https://github.com/siemens/efibootguard
+
+Signed-off-by: Christian Storm <christi...@siemens.com>
+---
+ Kconfig              |   8 +++
+ Makefile.deps        |   8 +++
+ Makefile.flags       |   4 ++
+ bootloader/Config.in |  12 ++++
+ bootloader/Makefile  |   1 +
+ bootloader/ebg.c     | 200 +++++++++++++++++++++++++++++++++++++++++++++++++++
+ bootloader/ebg.h     |  90 +++++++++++++++++++++++
+ 7 files changed, 323 insertions(+)
+ create mode 100644 bootloader/ebg.c
+ create mode 100644 bootloader/ebg.h
+
+Index: git/Kconfig
+===================================================================
+--- git.orig/Kconfig
++++ git/Kconfig
+@@ -37,6 +37,14 @@ config HAVE_LIBUBOOTENV
+ 	bool
+ 	option env="HAVE_LIBUBOOTENV"
+ 
++config HAVE_LIBEBGENV
++        bool
++        option env="HAVE_LIBEBGENV"
++
++config HAVE_LIBPARTED
++        bool
++        option env="HAVE_LIBPARTED"
++
+ config HAVE_LIBZEROMQ
+ 	bool
+ 	option env="HAVE_LIBZEROMQ"
+Index: git/Makefile.deps
+===================================================================
+--- git.orig/Makefile.deps
++++ git/Makefile.deps
+@@ -34,6 +34,14 @@ ifeq ($(HAVE_LIBUBOOTENV),)
+ export HAVE_LIBUBOOTENV = y
+ endif
+ 
++ifeq ($(HAVE_LIBEBGENV),)
++export HAVE_LIBEBGENV = y
++endif
++
++ifeq ($(HAVE_LIBPARTED),)
++export HAVE_LIBPARTED = y
++endif
++
+ ifeq ($(HAVE_LIBSSL),)
+ export HAVE_LIBSSL = y
+ endif
+Index: git/Makefile.flags
+===================================================================
+--- git.orig/Makefile.flags
++++ git/Makefile.flags
+@@ -165,6 +165,10 @@ ifeq ($(CONFIG_UBOOT),y)
+ LDLIBS += z ubootenv
+ endif
+ 
++ifeq ($(CONFIG_BOOTLOADER_EBG),y)
++LDLIBS += ebgenv parted z
++endif
++
+ # suricatta
+ ifneq ($(CONFIG_SURICATTA),)
+ ifneq ($(CONFIG_SURICATTA_SSL),)
+Index: git/bootloader/Config.in
+===================================================================
+--- git.orig/bootloader/Config.in
++++ git/bootloader/Config.in
+@@ -4,6 +4,18 @@ choice
+ 	help
+ 	  Choose the bootloader
+ 
++config BOOTLOADER_EBG
++        bool "EFI Boot Guard"
++        depends on HAVE_LIBEBGENV
++        depends on HAVE_LIBPARTED
++        depends on HAVE_ZLIB
++        help
++          Support for EFI Boot Guard
++          https://github.com/siemens/efibootguard
++
++comment "EFI Boot Guard needs libebgenv, libz, and libparted"
++        depends on !HAVE_LIBPARTED || !HAVE_ZLIB || !HAVE_LIBEBGENV
++
+ config UBOOT
+ 	bool "U-Boot"
+ 	depends on HAVE_LIBUBOOTENV
+Index: git/bootloader/Makefile
+===================================================================
+--- git.orig/bootloader/Makefile
++++ git/bootloader/Makefile
+@@ -1,3 +1,4 @@
+ lib-$(CONFIG_UBOOT)		+= uboot.o
+ lib-$(CONFIG_BOOTLOADER_NONE)	+= none.o
+ lib-$(CONFIG_BOOTLOADER_GRUB)	+= grub.o
++lib-$(CONFIG_BOOTLOADER_EBG)	+= ebg.o
+Index: git/bootloader/ebg.c
+===================================================================
+--- /dev/null
++++ git/bootloader/ebg.c
+@@ -0,0 +1,200 @@
++/*
++ * Author: Christian Storm
++ * Copyright (C) 2017, Siemens AG
++ *
++ * This program is free software; you can redistribute it and/or
++ * modify it under the terms of the GNU General Public License as
++ * published by the Free Software Foundation; either version 2 of
++ * the License, or (at your option) any later version.
++ *
++ * This program is distributed in the hope that it will be useful,
++ * but WITHOUT ANY WARRANTY; without even the implied warranty of
++ * MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE. See the
++ * GNU General Public License for more details.
++ *
++ * You should have received a copy of the GNU General Public License
++ * along with this program; if not, write to the Free Software
++ * Foundation, Inc.
++ */
++
++#include <unistd.h>
++#include <stdlib.h>
++#include <limits.h>
++#include <stdbool.h>
++#include <stdio.h>
++#include <string.h>
++#include <util.h>
++#include <generated/autoconf.h>
++#include <suricatta/state.h>
++#include "bootloader.h"
++#include "ebg.h"
++
++#ifdef CONFIG_SURICATTA_STATE_CHOICE_BOOTLOADER
++#define EXPANDTOKL2(token) token
++#define EXPANDTOK(token) EXPANDTOKL2(token)
++#define STATE_KEY EXPANDTOK(CONFIG_SURICATTA_STATE_BOOTLOADER)
++#else
++#define STATE_KEY "none"
++#endif
++
++int bootloader_env_set(const char *name, const char *value)
++{
++        if (strncmp(name, "recovery_status", strlen("recovery_status") + 1) == 0) {
++                // TODO: SWUpdate uses/stores this variable during installation.
++                //       However, EFI Boot Guard does (currently) not support storing
++                //       application-specific variables in its environment.
++                //       Hence mimic its store success.
++                return 0;
++        }
++
++        int ret = 0;
++
++        errno = 0;
++        ebg_beverbose(loglevel > INFOLEVEL ? true : false);
++
++        if (strncmp(name, (char *)STATE_KEY, strlen((char *)STATE_KEY) + 1) == 0) {
++                // NOTE: Map suricatta's update_state_t to EFI Boot Guard's API
++                if (*value == STATE_OK) {
++                        if ((ret = ebg_env_open_current()) != 0) {
++                                (void)fprintf(stderr,
++                                     "Error: cannot open bootloader environment: %s.\n",
++                                     strerror(ret));
++                                return ret;
++                        }
++                        if ((ret = ebg_env_confirmupdate()) != 0) {
++                                (void)fprintf(stderr,
++                                     "Error: cannot confirm update/set bootloader default state: %s.\n",
++                                     strerror(ret));
++                        }
++                        if (ret == 0 && (ret = ebg_env_clearerrorstate()) != 0) {
++                                (void)fprintf(stderr,
++                                     "Error: cannot clear/unset bootloader error state: %s.\n",
++                                     strerror(ret));
++                        }
++                } else if (*value == STATE_INSTALLED) {
++                        if ((ret = ebg_env_create_new()) != 0) {
++                                (void)fprintf(stderr,
++                                     "Error: cannot create new bootloader environment: %s.\n",
++                                     strerror(ret));
++                                return ret;
++                        }
++                } else {
++                        (void)fprintf(stderr,
++                             "Error: setting %s in bootloader environment is unsupported.\n",
++                             name);
++                        return -1;
++                }
++        } else {
++                if ((ret = ebg_env_create_new()) != 0) {
++                        (void)fprintf(stderr,
++                             "Error: cannot open/create new bootloader environment: %s.\n",
++                             strerror(ret));
++                        return ret;
++                }
++                if ((ret = ebg_env_set((char *)name, (char *)value)) != 0) {
++                        (void)fprintf(stderr,
++                            "Error: cannot set bootloader variable %s=%s: %s.\n",
++                            name, value, strerror(ret));
++                }
++        }
++        (void)ebg_env_close();
++        return ret;
++}
++
++int bootloader_env_unset(const char *name)
++{
++        ebg_beverbose(loglevel > INFOLEVEL ? true : false);
++        return bootloader_env_set(name, "");
++}
++
++char *bootloader_env_get(const char *name)
++{
++        char *value = NULL;
++
++        errno = 0;
++        ebg_beverbose(loglevel > INFOLEVEL ? true : false);
++
++        int ret;
++        if ((ret = ebg_env_open_current()) != 0) {
++                (void)fprintf(stderr,
++                     "Error: cannot open bootloader environment: %s.\n",
++                     strerror(ret));
++                return NULL;
++        }
++
++        if (strncmp(name, (char *)STATE_KEY, strlen((char *)STATE_KEY) + 1) == 0) {
++                // NOTE: Map EFI Boot Guard's API to suricatta's update_state_t
++                value = (char *)malloc(sizeof(char));
++                if (!ebg_env_isupdatesuccessful()) {
++                        *value = STATE_FAILED;
++                } else {
++                        *value = STATE_NOT_AVAILABLE;
++                        if (ebg_env_istesting()) {
++                                *value = STATE_TESTING;
++                        } else if (ebg_env_isokay()) {
++                                *value = STATE_OK;
++                        } else if (ebg_env_isinstalled()) {
++                                *value = STATE_INSTALLED;
++                        }
++
++                        if (errno == EIO) {
++                                free(value);
++                                value = NULL;
++                        }
++                }
++        } else {
++                if (ebg_env_get((char *)name)) {
++                        if (asprintf(&value, "%s", ebg_env_get((char *)name)) == -1) {
++                                (void)fprintf(stderr, "Error: cannot allocate memory.\n");
++                                value = NULL;
++                        }
++                }
++        }
++
++        (void)ebg_env_close();
++
++        if (value == NULL) {
++                (void)fprintf(stderr,
++                    "Error: cannot get bootloader environment variable '%s': %s\n",
++                    name, strerror(errno));
++        }
++        return value;
++}
++
++int bootloader_apply_list(const char *filename)
++{
++        FILE *fp = NULL;
++        char *line = NULL;
++        char *key;
++        char *value;
++        size_t len = 0;
++        int ret = 0;
++
++        errno = 0;
++        ebg_beverbose(loglevel > INFOLEVEL ? true : false);
++
++        if (!(fp = fopen(filename, "rb"))) {
++                (void)fprintf(stderr,
++                              "Error: Failed to open SWUpdate environment file %s: %s\n",
++                              filename, strerror(errno));
++                return -1;
++        }
++
++        while ((getline(&line, &len, fp)) != -1) {
++                key = strtok(line, " \t\n");
++                value = strtok(NULL, "\t\n");
++                if (value != NULL && key != NULL) {
++                        if ((ret = bootloader_env_set(key, value)) != 0) {
++                                break;
++                        }
++                }
++        }
++
++        if (fp) {
++                fclose(fp);
++        }
++        if (line) {
++                free(line);
++        }
++        return ret;
++}
+Index: git/bootloader/ebg.h
+===================================================================
+--- /dev/null
++++ git/bootloader/ebg.h
+@@ -0,0 +1,90 @@
++/** @file
++
++ * EFI Boot Guard
++ *
++ * Copyright (c) Siemens AG, 2017
++ *
++ * Authors:
++ *  Andreas Reichel <andreas.r...@siemens.com>
++ *
++ * This work is licensed under the terms of the GNU GPL, version 2.  See
++ * the COPYING file in the top-level directory.
++ *
++*/
++
++#ifndef __EBGENV_H__
++#define __EBGENV_H__
++
++#include <errno.h>
++
++/** @brief Tell the library to output information for the user.
++*/
++void ebg_beverbose(bool v);
++
++/** @brief Initialize environment library and open environment. The first
++ * time this function is called, it will create a new environment with the
++ * highest revision number for update purposes. Every next time it will
++ * just open the environment with the highest revision number.
++ *  @return 0 on success, errno on failure
++*/
++int ebg_env_create_new(void);
++
++/** @brief Initialize environment library and open current environment.
++ *  @return 0 on success, errno on failure
++*/
++int ebg_env_open_current(void);
++
++/** @brief Retrieve variable content
++ *  @param key an enum constant to specify the variable
++ *  @return a pointer to the buffer with the variable content on success,
++ * NULL on failure. The returned pointer must not be freed and is freed
++ * automatically on closing the environment. If NULL is returned, errno is
++ * set.
++*/
++char *ebg_env_get(char *key);
++
++/** @brief Store new content into variable
++ *  @param key name of the environment variable to set
++ *  @param value a string to be stored into the variable
++ *  @return 0 on success, errno on failure
++*/
++int ebg_env_set(char *key, char *value);
++
++/** @brief Check if last update was successful
++ *  @return true if successful, false if not
++*/
++bool ebg_env_isupdatesuccessful(void);
++
++/** @brief Reset all stored failure states
++ *  @return 0 if successful, errno on failure
++*/
++int ebg_env_clearerrorstate(void);
++
++/** @brief Check if active env is clean
++ *  @return true if yes, errno set on failure
++*/
++bool ebg_env_isokay(void);
++
++/** @brief Check if active env has state 'installed'
++ *  @return true if yes, errno set on failure
++*/
++bool ebg_env_isinstalled(void);
++
++/** @brief Check if active env is in testing state
++ *  @return true if yes, errno set on failure
++*/
++bool ebg_env_istesting(void);
++
++/** @brief Confirm environment after update - sets testing and boot_once
++ * both to 0
++ * @return 0 if successful, errno on failure
++*/
++int ebg_env_confirmupdate(void);
++
++/** @brief Closes environment and finalize library. Changes are written
++ * before closing.
++ *  @return 0 on success, errno on failure
++*/
++int ebg_env_close(void);
++
++#endif //__EBGENV_H__
