@@ -3,7 +3,7 @@ FILESEXTRAPATHS_prepend := "${THISDIR}/${PN}:"
 PACKAGECONFIG_CONFARGS = ""
 
 SRC_URI += " \
-     file://0001-Provide-a-dummy-file-backed-bootloader-interface.patch \
+     file://add-ebg-support.patch \
      file://rawfile-check-if-files-are-the-same.patch \
      file://hwrevision \
      file://swupdate.cfg \
@@ -11,6 +11,8 @@ SRC_URI += " \
      "
 
 SRCREV = "37a0328d8a8446d5a3d26b80034660390dcc871a"
+
+DEPENDS += "efibootguard"
 
 do_install_append() {
     install -d ${D}${bindir}
