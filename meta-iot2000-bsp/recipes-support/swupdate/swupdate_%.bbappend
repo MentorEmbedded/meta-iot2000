@@ -12,7 +12,10 @@ SRC_URI += " \
 
 SRCREV = "37a0328d8a8446d5a3d26b80034660390dcc871a"
 
-DEPENDS += "efibootguard"
+DEPENDS += " \
+    efibootguard \
+    parted \
+"
 
 do_install_append() {
     install -d ${D}${bindir}
