@@ -8,10 +8,11 @@ software =
                 {
                         images: (
                         {
-                                filename = "${image}";
+                                filename = "${image}-enc";
                                 sha256 = "@${image}";
                                 device = "/dev/mmcblk0p2";
-				compressed = true;
+                                compressed = true;
+                                encrypted = "@${image}-status";
                         }
                         );
                         bootenv: (
@@ -33,10 +34,11 @@ software =
                 {
                         images: (
                         {
-                                filename = "${image}";
+                                filename = "${image}-enc";
                                 sha256 = "@${image}";
                                 device = "/dev/mmcblk0p3";
-				compressed = true;
+                                compressed = true;
+                                encrypted = "@${image}-status";
                         }
                         );
                         bootenv: (
