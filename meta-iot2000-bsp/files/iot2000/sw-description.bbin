@@ -1,25 +1,30 @@
+software =
 {
-    "software": {
-        "iot2000":  {
-            "scripts": [
+        version = "1.0";
+        hardware-compatibility = [ "1.0" ];
+        stable:
+        {
+                platform0:
                 {
-                    "filename": "pivot.sh",
-                    "sha256": "@pivot.sh",
-                    "type": "shellscript",
-                }
-            ],
-            "images": [
+                        images: (
+                        {
+                                filename = "${image}";
+                                sha256 = "@${image}";
+                                device = "/dev/mmcblk0p2";
+				compressed = true;
+                        }
+                        );
+                };
+                platform1:
                 {
-                    "filename": "${image}",
-                    "sha256": "@${image}",
-                    "type": "raw",
-                    "device": "/dev/disk/by-label/pf_backup",
-                }
-            ],
-            "hardware-compatibility": [
-                "1.0"
-            ]
-        }
-    },
-    "version": "0.1.0"
+                        images: (
+                        {
+                                filename = "${image}";
+                                sha256 = "@${image}";
+                                device = "/dev/mmcblk0p3";
+				compressed = true;
+                        }
+                        );
+                };
+        };
 }
