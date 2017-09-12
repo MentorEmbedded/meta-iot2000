@@ -14,6 +14,20 @@ software =
 				compressed = true;
                         }
                         );
+                        bootenv: (
+                        {
+                                name = "testing";
+                                value = "1";
+                        },
+                        {
+                                name = "kernelfile";
+                                value = "C:BOOT0:bzImage";
+                        },
+                        {
+                                name = "kernelparams";
+                                value = "root=/dev/mmcblk0p2 console=ttyS1,115200n8 reboot=efi,warm rw debugshell=5 rootwait initrd=acpi-upgrades-iot2000.cpio";
+                        }
+                        );
                 };
                 platform1:
                 {
@@ -23,6 +37,20 @@ software =
                                 sha256 = "@${image}";
                                 device = "/dev/mmcblk0p3";
 				compressed = true;
+                        }
+                        );
+                        bootenv: (
+                        {
+                                name = "testing";
+                                value = "1";
+                        },
+                        {
+                                name = "kernelfile";
+                                value = "C:BOOT1:bzImage";
+                        },
+                        {
+                                name = "kernelparams";
+                                value = "root=/dev/mmcblk0p3 console=ttyS1,115200n8 reboot=efi,warm rw debugshell=5 rootwait initrd=acpi-upgrades-iot2000.cpio";
                         }
                         );
                 };
