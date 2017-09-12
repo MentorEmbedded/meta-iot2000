@@ -178,7 +178,7 @@ Index: git/bootloader/ebg.c
 +                                     strerror(ret));
 +                        }
 +                } else if (*value == STATE_INSTALLED) {
-+                        if ((ret = ebg_env_create_new()) != 0) {
++                        if (0 && (ret = ebg_env_create_new()) != 0) {
 +                                (void)fprintf(stderr,
 +                                     "Error: cannot create new bootloader environment: %s.\n",
 +                                     strerror(ret));
