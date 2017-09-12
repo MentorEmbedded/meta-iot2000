@@ -1,12 +1,32 @@
 #!/bin/sh
 
-# Give system time to setup networking
-sleep 10
+# Determine root partition (assumes "root" is the first kernel option)
+rootpart=$(cat /proc/cmdline|sed -e 's,^root=/dev/mmcblk0p\([23]\) .*,\1,g')
 
-# Extract the MAC address of the on-board Ethernet controller
-MACHINE_ID=`ip address|grep link/ether|awk '{ print $2; }'`
+case "${rootpart}" in
+   2) PLATFORM_ID=platform1;;
+   3) PLATFORM_ID=platform0;;
+esac
+
+tries=0
+while :
+do
+   # Extract the MAC address of the on-board Ethernet controller
+   MACHINE_ID=`ip address|grep link/ether|awk '{ print $2; }'`
+
+   # Did we get our MAC address? Stop polling if we did
+   [ "${MACHINE_ID}" != "00:00:00:00:00:00" ] && break
+
+   # Should we give up?
+   tries=$((${tries} + 1))
+   [ ${tries} -ge 10 ] && exit 1
+
+   # Continue trying, pause for a second
+   sleep 1
+done
 
 cat >/tmp/swupdate.env <<EOF
 MACHINE_ID=${MACHINE_ID}
+PLATFORM_ID=${PLATFORM_ID}
 EOF
 
