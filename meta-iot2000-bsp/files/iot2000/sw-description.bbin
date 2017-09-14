@@ -11,7 +11,7 @@ software =
                                 filename = "${image}-enc";
                                 sha256 = "@${image}";
                                 device = "/dev/mmcblk0p2";
-                                compressed = true;
+                                compressed = false;
                                 encrypted = "@${image}-status";
                         }
                         );
@@ -37,7 +37,7 @@ software =
                                 filename = "${image}-enc";
                                 sha256 = "@${image}";
                                 device = "/dev/mmcblk0p3";
-                                compressed = true;
+                                compressed = false;
                                 encrypted = "@${image}-status";
                         }
                         );
