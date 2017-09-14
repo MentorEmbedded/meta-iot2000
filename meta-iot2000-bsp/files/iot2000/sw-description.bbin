@@ -12,7 +12,7 @@ software =
                                 sha256 = "@${image}";
                                 device = "/dev/mmcblk0p2";
                                 compressed = false;
-                                encrypted = "@${image}-status";
+                                encrypted = @${image}-status;
                         }
                         );
                         bootenv: (
@@ -38,7 +38,7 @@ software =
                                 sha256 = "@${image}";
                                 device = "/dev/mmcblk0p3";
                                 compressed = false;
-                                encrypted = "@${image}-status";
+                                encrypted = @${image}-status;
                         }
                         );
                         bootenv: (
