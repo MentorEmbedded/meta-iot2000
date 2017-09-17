@@ -8,16 +8,19 @@ software =
                 {
                         images: (
                         {
-                                filename = "${image}";
+                                filename = "${image}-enc";
                                 sha256 = "@${image}";
                                 device = "/dev/mmcblk0p2";
-				compressed = true;
+				compressed = false;
+				encrypted = @${image}-status;
+				installed-directly = TRUE;
                         },
 			{
-				filename = "bzImage"
-				sha256 = "@bzImage"
-				path = "/run/media/BOOT0"
-				type = "rawfile"
+				filename = "bzImage-enc";
+				sha256 = "@bzImage";
+				path = "/run/media/BOOT0";
+				type = "rawfile";
+				encrypted = @bzImage-status;
 			}
                         );
 			bootenv: (
@@ -39,16 +42,19 @@ software =
                 {
                         images: (
                         {
-                                filename = "${image}";
+                                filename = "${image}-enc";
                                 sha256 = "@${image}";
                                 device = "/dev/mmcblk0p3";
-				compressed = true;
+				compressed = false;
+				encrypted = @${image}-status;
+				installed-directly = TRUE;
                         },
                         {
-                                filename = "bzImage"
-                                sha256 = "@bzImage"
-                                path = "/run/media/BOOT1"
-                                type = "rawfile"
+                                filename = "bzImage-enc";
+                                sha256 = "@bzImage";
+                                path = "/run/media/BOOT1";
+                                type = "rawfile";
+                                encrypted = @bzImage-status;
                         }
 			);
 			bootenv: (
