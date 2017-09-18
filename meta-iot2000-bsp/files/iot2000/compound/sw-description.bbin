@@ -20,7 +20,7 @@ software =
 			{
 				filename = "bzImage-enc";
 				sha256 = "@bzImage";
-				path = "/run/media/BOOT0";
+				path = "/run/media/BOOT0/bzImage";
 				type = "rawfile";
 				encrypted = @bzImage-status;
 			}
@@ -56,7 +56,7 @@ software =
                         {
                                 filename = "bzImage-enc";
                                 sha256 = "@bzImage";
-                                path = "/run/media/BOOT1";
+                                path = "/run/media/BOOT1/bzImage";
                                 type = "rawfile";
                                 encrypted = @bzImage-status;
                         }
