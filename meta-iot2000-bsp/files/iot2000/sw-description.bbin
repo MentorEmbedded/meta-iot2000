@@ -13,6 +13,7 @@ software =
                                 device = "/dev/mmcblk0p2";
                                 compressed = false;
                                 encrypted = @${image}-status;
+                                installed-directly = true;
                         }
                         );
                         bootenv: (
@@ -39,6 +40,7 @@ software =
                                 device = "/dev/mmcblk0p3";
                                 compressed = false;
                                 encrypted = @${image}-status;
+                                installed-directly = true;
                         }
                         );
                         bootenv: (
