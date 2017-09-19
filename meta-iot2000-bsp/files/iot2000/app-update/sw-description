@@ -1,0 +1,20 @@
+software =
+{
+        version = "1.0";
+        hardware-compatibility: [ "1.0" ];
+
+        files: (
+                {
+                filename = "stress_1.0.4-r0.0_i586-nlp-32.ipk.enc";
+                path = "/tmp/stress_1.0.4-r0.0_i586-nlp-32.ipk";
+                compressed = false;
+                encrypted = true;
+                }
+        );
+        scripts: (
+                {
+                filename = "install-ipk.sh";
+                type = "shellscript";
+                }
+        );
+}
