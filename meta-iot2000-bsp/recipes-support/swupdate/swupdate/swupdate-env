@@ -2,6 +2,28 @@
 
 # Determine root partition (assumes "root" is the first kernel option)
 rootpart=$(cat /proc/cmdline|sed -e 's,^root=/dev/mmcblk0p\([23]\) .*,\1,g')
+rm -f /run/media/persistent/swupdate_flags/update_status
+
+if [ ! -d "/run/media/persistent/swupdate_flags" ]; then
+  mkdir /run/media/persistent/swupdate_flags
+fi
+
+if [ -e "/run/media/persistent/swupdate_flags/update_performed" ]; then
+  prevpart=`cat /run/media/persistent/swupdate_flags/prevpart`
+
+  if [ "$rootpart" != "$prevpart" ]; then
+    update_status="2"
+    bg_setenv -c
+  else
+    update_status="3"
+  fi
+  rm -f /run/media/persistent/swupdate_flags/update_performed
+else
+  update_status=""
+fi
+
+echo -n "$rootpart" > /run/media/persistent/swupdate_flags/prevpart
+echo -n "$update_status" > /run/media/persistent//swupdate_flags/update_status
 
 case "${rootpart}" in
    2) PLATFORM_ID=platform1;;
@@ -28,5 +50,5 @@ done
 cat >/tmp/swupdate.env <<EOF
 MACHINE_ID=${MACHINE_ID}
 PLATFORM_ID=${PLATFORM_ID}
+UPDATE_STATUS=${update_status}
 EOF
-
