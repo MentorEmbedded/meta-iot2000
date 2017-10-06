@@ -13,13 +13,16 @@ if [ -e "/run/media/persistent/swupdate_flags/update_performed" ]; then
 
   if [ "$rootpart" != "$prevpart" ]; then
     update_status="2"
+    hawkbit_update_status="-c 2"
     bg_setenv -c
   else
     update_status="3"
+    hawkbit_update_status="-c 3"
   fi
   rm -f /run/media/persistent/swupdate_flags/update_performed
 else
   update_status=""
+  hawkbit_update_status=""
 fi
 
 echo -n "$rootpart" > /run/media/persistent/swupdate_flags/prevpart
@@ -50,5 +53,5 @@ done
 cat >/tmp/swupdate.env <<EOF
 MACHINE_ID=${MACHINE_ID}
 PLATFORM_ID=${PLATFORM_ID}
-UPDATE_STATUS=${update_status}
+UPDATE_STATUS=${hawkbit_update_status}
 EOF

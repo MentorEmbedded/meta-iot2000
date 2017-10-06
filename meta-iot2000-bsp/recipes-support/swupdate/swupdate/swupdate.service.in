@@ -5,7 +5,7 @@ After=network.target
 [Service]
 ExecStartPre=-/usr/bin/swupdate-env
 EnvironmentFile=-/tmp/swupdate.env
-ExecStart=/usr/bin/swupdate -u "-c ${UPDATE_STATUS} -t default -u @hawkbit_url@ -i ${MACHINE_ID}" -p "touch /run/media/persistent/swupdate_flags/update_performed /sbin/reboot" -e stable,${PLATFORM_ID}
+ExecStart=/usr/bin/swupdate -u "${UPDATE_STATUS} -t default -u @hawkbit_url@ -i ${MACHINE_ID}" -p "touch /run/media/persistent/swupdate_flags/update_performed && /sbin/reboot" -e stable,${PLATFORM_ID}
 
 [Install]
 WantedBy=multi-user.target
