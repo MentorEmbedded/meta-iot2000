@@ -1,4 +1,4 @@
-addtask unpack after do_fetch
+addtask unpack after do_fetch before do_configure
 
 FILESEXTRAPATHS_prepend := "${THISDIR}/${BPN}:"
 SRC_URI += "file://libstdc++6_${GCC_VERSION}-r0.0_${TUNE_PKGARCH}.tar.bz2;subdir=prebuilt"
