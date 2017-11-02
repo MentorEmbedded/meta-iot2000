@@ -3,7 +3,6 @@ FILESEXTRAPATHS_prepend := "${THISDIR}/${PN}:"
 PACKAGECONFIG_CONFARGS = ""
 
 SRC_URI += " \
-     file://add-ebg-support.patch \
      file://hwrevision \
      file://swupdate.cfg \
      file://swupdate-env \
