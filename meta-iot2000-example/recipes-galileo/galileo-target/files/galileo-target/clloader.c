@@ -359,6 +359,9 @@ main(int argc, char *argv[])
 	int c;
 	unsigned int startup_delay=0;
 
+	/* change curent working directory to a rw enabled directory to run in read-only filesystem of MEL */
+	chdir("/sketch");	
+
 	Rxtimeout = 100;
 	if ((cp=getenv("SHELL")) && (strstr(cp, "rsh") || strstr(cp, "rksh")
 		|| strstr(cp,"rbash") || strstr(cp, "rshell")))
@@ -1491,6 +1494,12 @@ procheader(char *name, struct zm_fileinfo *zi)
 				my_fclose(fout);
 		}
 		fout = fopen(name_static, openmode);
+		
+		char cwd1[1024] = {'\0'};
+                getcwd(cwd1, sizeof(cwd1));
+		DO_SYSLOG((LOG_ERR,"cwd1:%s, file:%s, mode %s, %s: cannot open: ",
+                                cwd1, name_static, openmode, protname()));
+
 #ifdef ENABLE_MKDIR
 		if ( !fout && Restricted < 2) {
 			if (make_dirs(name_static))
@@ -1502,9 +1511,11 @@ procheader(char *name, struct zm_fileinfo *zi)
 #ifdef ENABLE_SYSLOG
 			int e=errno;
 #endif
+			char cwd[1024] = {'\0'};
+			getcwd(cwd, sizeof(cwd));
 			zpfatal(_("cannot open %s"), name_static);
-			DO_SYSLOG((LOG_ERR,"%s: cannot open: %s",
-				protname(),strerror(e)));
+			DO_SYSLOG((LOG_ERR,"cwd:%s, file:%s, mode %s, %s: cannot open: %s",
+				cwd, name_static, openmode, protname(),strerror(e)));
 			return ERROR;
 		}
 	}

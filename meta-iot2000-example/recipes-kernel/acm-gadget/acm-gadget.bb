@@ -21,4 +21,5 @@ do_install () {
               -e 's,/usr/bin,${bindir},g' \
               -e 's,/usr,${prefix},g' > ${D}${sysconfdir}/init.d/acm-gadget
         chmod a+x ${D}${sysconfdir}/init.d/acm-gadget
+	update-rc.d -r ${D} acm-gadget defaults
 }
