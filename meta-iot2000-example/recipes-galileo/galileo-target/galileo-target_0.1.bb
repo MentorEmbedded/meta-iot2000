@@ -28,7 +28,6 @@ RDEPENDS_${PN} += "galileogen2-fake galileo-uio-gpio galileo-spi1-spidev"
 RDEPENDS_${PN} += "acm-gadget"
 
 DEPENDS = "update-rc.d"
-ROOTFS_RO_UNNEEDED := ${ROOTFS_RO_UNNEEDED:update-rc.d=}
 
 do_compile() {
 	make
